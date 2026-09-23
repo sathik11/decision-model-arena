@@ -118,11 +118,24 @@ cmd_probe() {
   echo "while a GPU container is actually running. Nothing is deployed here."
   echo
 
-  az group create -n "$rg" -l "$region" --only-show-errors -o none 2>/dev/null \
-    || { echo "Could not create resource group in $region."; return 1; }
+  local rgerr rgrc
+  rgerr=$(az group create -n "$rg" -l "$region" --only-show-errors -o none 2>&1)
+  rgrc=$?
+  if [[ $rgrc -ne 0 ]]; then
+    printf '\033[31mBLOCKED\033[0m — could not create resource group in %s:\n' "$region"
+    echo "$rgerr" | tail -4
+    return 1
+  fi
 
-  az containerapp env create -n "$env" -g "$rg" -l "$region" \
-    --enable-workload-profiles true --only-show-errors -o none 2>&1 | tail -3
+  local envout envrc
+  envout=$(az containerapp env create -n "$env" -g "$rg" -l "$region" \
+    --enable-workload-profiles true --only-show-errors 2>&1)
+  envrc=$?
+  if [[ $envrc -ne 0 ]]; then
+    printf '\033[31mBLOCKED\033[0m — environment creation failed in %s:\n' "$region"
+    echo "$envout" | tail -4
+    return 1
+  fi
 
   local out rc
   out=$(az containerapp env workload-profile add -n "$env" -g "$rg" \
