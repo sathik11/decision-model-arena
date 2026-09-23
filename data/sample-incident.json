@@ -1,0 +1,16 @@
+{
+  "asset_id": "ASSET-042",
+  "asset_type": "rotating equipment",
+  "location": "North processing area",
+  "report": "Operator heard a new metallic grinding noise. Vibration increased rapidly and a hot bearing smell was noticed. No visible leak or injury.",
+  "sensor_summary": {
+    "vibration": "12.8 mm/s, above trip advisory",
+    "bearing_temperature": "94 C and rising",
+    "power_draw": "11% above normal"
+  },
+  "recent_work": [
+    "Bearing lubrication completed 9 days ago",
+    "Coupling alignment inspection deferred at last service"
+  ]
+}
+

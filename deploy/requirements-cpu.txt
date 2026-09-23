@@ -1,0 +1,9 @@
+# CPU-only deployment. The default torch wheel pulls ~2.5 GB of CUDA libraries
+# that are dead weight without a GPU, so the CPU index is pinned in the
+# Dockerfile instead.
+torch>=2.4
+laya>=0.3.5,<1
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2.9,<3
+huggingface_hub>=0.26

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Typed Decisions · Arena</title>
+<link rel="preconnect" href="https://rsms.me/">
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <div class="wordmark"><b>Typed Decision Arena</b><span>Foundry × Jev/Laya</span></div>
+    <div class="status-strip" id="status-strip"></div>
+  </div>
+
+  <header class="hero">
+    <div class="eyebrow"><b>System One</b> &nbsp;/&nbsp; decisions without generation</div>
+    <h1>Not every decision<br><em>needs a sentence.</em></h1>
+    <p>A generative model writes its answer one token at a time, even when the answer is a
+    label, a level, or a probability. A typed decision model returns those directly. This arena
+    runs both against the same evidence and shows exactly what was fed in, what came back, and
+    which tokens stopped being produced.</p>
+  </header>
+
+  <div class="scenarios" role="tablist">
+    <button class="scenario-tab" role="tab" data-scenario="triage" aria-selected="true">
+      <div class="idx">USE CASE 01</div>
+      <h3>Decide the route.</h3>
+      <p>Seven typed judgements on a critical-asset incident. Compares pure LLM, typed-only,
+      and typed + LLM escalation.</p>
+    </button>
+    <button class="scenario-tab" role="tab" data-scenario="firewall" aria-selected="false">
+      <div class="idx">USE CASE 02</div>
+      <h3>Decide what the LLM sees.</h3>
+      <p>The typed model scores every context line and drops the irrelevant ones before the
+      prompt is built. The saving is input tokens.</p>
+    </button>
+  </div>
+
+  <!-- ============ USE CASE 1 ============ -->
+  <div id="view-triage">
+
+    <section class="block">
+      <div class="block-head"><span class="block-num">01</span><span class="block-label">Evidence</span></div>
+      <h2>The incident.</h2>
+      <p class="sub">This is the raw operational state. Nothing here is pre-labelled — both
+      lanes receive exactly the same object.</p>
+      <div class="form-grid">
+        <div class="field"><label>Asset ID</label><input id="asset_id"></div>
+        <div class="field"><label>Asset type</label><input id="asset_type"></div>
+        <div class="field"><label>Location</label><input id="location"></div>
+        <div class="field wide"><label>Operator report</label><textarea id="report"></textarea></div>
+        <div class="field"><label>Sensor summary · JSON</label><textarea id="sensors" class="code"></textarea></div>
+        <div class="field"><label>Recent work · one per line</label><textarea id="work"></textarea></div>
+        <div class="field">
+          <label>Hybrid gate model</label>
+          <select id="hybrid_provider" style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:11px 13px;color:var(--ink);font:inherit;font-size:.9rem">
+            <option value="laya">Laya (local GPU)</option>
+            <option value="jev">Jev (needs key)</option>
+          </select>
+        </div>
+      </div>
+      <button class="run" id="run-triage">Run all lanes <span class="kbd">↵</span></button>
+      <span class="run-note" id="triage-note">Foundry and Laya run in parallel.</span>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><span class="block-num">02</span><span class="block-label">Model input</span></div>
+      <h2>What is actually fed to Laya.</h2>
+      <p class="sub">Laya and Jev are not prompted. They receive a <b>state</b> object plus a
+      <b>question contract</b>: for each question a primitive type — <span class="kind choice" style="display:inline-block">choice</span>
+      <span class="kind score" style="display:inline-block">score</span>
+      <span class="kind noul" style="display:inline-block">noul</span> — an instruction, and the
+      criteria that define each option. The criteria are semantic anchors, not few-shot examples.
+      The model encodes the state against each question and reads the answer off a decision head.</p>
+      <div class="contract">
+        <div id="contract-list"></div>
+        <div class="payload">
+          <header><span>Exact request payload</span><span id="payload-size"></span></header>
+          <pre id="payload"></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><span class="block-num">03</span><span class="block-label">Lanes</span></div>
+      <h2>Three ways to answer.</h2>
+      <p class="sub">Same evidence, same seven questions, same deterministic policy applied after
+      the model. Only the decision mechanism changes.</p>
+      <div class="lanes" id="lanes"><div class="lane"><div class="lane-waiting">Run the incident to populate the lanes.</div></div></div>
+      <div class="flows" id="flows"></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><span class="block-num">04</span><span class="block-label">Escalation gate</span></div>
+      <h2>Typed model first. Language only when it earns it.</h2>
+      <p class="sub">The hybrid lane closes the case on typed decisions alone unless a gate rule
+      fires. When one does, the LLM is asked for a short written justification — not to re-score
+      the fields it already has.</p>
+      <div id="hybrid"><div class="empty">No hybrid run yet.</div></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><span class="block-num">05</span><span class="block-label">Decisions</span></div>
+      <h2>Every field, every distribution.</h2>
+      <p class="sub">Fields where the lanes disagree are marked. Disagreement is the point: it is
+      where a typed model and a generative model would send a real crew to different places.</p>
+      <div class="detail-grid" id="detail"><div class="empty">No decisions yet.</div></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><span class="block-num">06</span><span class="block-label">Ledger</span></div>
+      <h2>Where the tokens went.</h2>
+      <p class="sub">Typed models still tokenize their input — the saving is generated output
+      tokens and the parsing risk that comes with them.</p>
+      <div class="ledger" id="ledger"><div><div class="big">—</div><div class="cap">awaiting run</div></div></div>
+      <h3 style="margin:44px 0 0;font-weight:450;letter-spacing:-.02em;font-size:1.1rem">Policy rules applied after every lane</h3>
+      <p class="sub" style="margin-top:8px">The models judge. These rules decide. Rules that fired for the typed lane are highlighted.</p>
+      <ol class="rules" id="policy-rules"></ol>
+    </section>
+  </div>
+
+  <!-- ============ USE CASE 2 ============ -->
+  <div id="view-firewall" class="hidden">
+
+    <section class="block">
+      <div class="block-head"><span class="block-num">01</span><span class="block-label">Context stream</span></div>
+      <h2>Sixteen lines. One question.</h2>
+      <p class="sub">A real agent context is mostly noise. The typed model asks one
+      <span class="kind noul" style="display:inline-block">noul</span> question per line —
+      <i>is this required to answer the task?</i> — and returns a probability. Everything below
+      the threshold never reaches the prompt.</p>
+      <div class="form-grid">
+        <div class="field wide"><label>Operator task</label><textarea id="fw_task"></textarea></div>
+        <div class="field wide"><label>Context lines · one per line</label><textarea id="fw_items" class="code" style="min-height:230px"></textarea></div>
+      </div>
+      <button class="run" id="run-firewall">Score and answer <span class="kbd">↵</span></button>
+      <span class="run-note" id="fw-note">Scores every line, then answers twice.</span>
+      <div class="field" style="margin-top:26px;max-width:420px">
+        <label>Keep threshold · p(required) ≥ <span id="fw_threshold_value">0.50</span></label>
+        <input type="range" id="fw_threshold" min="0.05" max="0.95" step="0.01" value="0.5"
+          style="padding:0;border:0;background:none;accent-color:var(--accent)">
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><span class="block-num">02</span><span class="block-label">Gate question</span></div>
+      <h2>The single question behind every badge.</h2>
+      <p class="sub">This is the whole contract sent to the typed model for each line.</p>
+      <div class="payload" style="max-width:820px">
+        <header><span>noul · context_is_required</span><span>per line</span></header>
+        <pre id="fw-question"></pre>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><span class="block-num">03</span><span class="block-label">Keep / drop</span></div>
+      <h2>What survived the firewall.</h2>
+      <p class="sub" id="fw-summary">Run the scenario to score the stream.</p>
+      <div class="fw-list" id="fw-list"><div class="empty">No scored context yet.</div></div>
+      <p class="sub" id="fw-calibration" style="margin:22px 0 0"></p>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><span class="block-num">04</span><span class="block-label">Result</span></div>
+      <h2>Same model. Same task. Fewer tokens.</h2>
+      <p class="sub">Both answers come from the same Foundry deployment. The only difference is
+      what was allowed into the prompt.</p>
+      <div class="answers" id="fw-answers"><div class="answer"><div class="lane-waiting">No answers yet.</div></div></div>
+    </section>
+  </div>
+
+  <footer>
+    Token counts are read from live provider usage where the provider reports it. Laya input
+    counts are local compute units on your own GPU, not billed API tokens, and are not directly
+    comparable to Foundry prompt tokens. Laya is an open-weight model with different weights and
+    calibration to Jev; treat it as an architectural analogue, not an equivalent checkpoint.
+  </footer>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

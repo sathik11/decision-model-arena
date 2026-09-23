@@ -1,0 +1,54 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.azure/
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test and type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Model weights and caches. The Laya checkpoint is ~843 MB and is pulled from
+# the Hugging Face hub at runtime or baked into the container image instead.
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+models/
+checkpoints/
+.cache/
+huggingface/
+
+# Local run artifacts
+*.log
+logs/
+results/
+*.db
+*.sqlite3
+
+# Editor and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
