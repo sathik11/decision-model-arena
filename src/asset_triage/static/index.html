@@ -168,9 +168,12 @@
 
     <section class="block">
       <div class="block-head"><span class="block-num">04</span><span class="block-label">Result</span></div>
-      <h2>Same model. Same task. Fewer tokens.</h2>
+      <h2>Same model. Same task. Fewer <em>input</em> tokens.</h2>
       <p class="sub">Both answers come from the same Foundry deployment. The only difference is
-      what was allowed into the prompt.</p>
+      what was allowed into the prompt. The gate trims what the model <b>reads</b>, so input
+      tokens fall while generated tokens stay flat — the answer is capped at three sentences
+      either way. Flat output next to a shorter input is the point: less was read, nothing
+      was lost.</p>
       <div class="answers" id="fw-answers"><div class="answer"><div class="lane-waiting">No answers yet.</div></div></div>
     </section>
   </div>
