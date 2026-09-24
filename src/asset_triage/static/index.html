@@ -12,31 +12,32 @@
 <div class="shell">
 
   <div class="topbar">
-    <div class="wordmark"><b>Typed Decision Arena</b><span>Foundry × Jev/Laya</span></div>
+    <div class="wordmark"><b>Typed Decision Arena</b><span>Built on Microsoft Foundry</span></div>
     <div class="status-strip" id="status-strip"></div>
   </div>
 
   <header class="hero">
     <div class="eyebrow"><b>System One</b> &nbsp;/&nbsp; decisions without generation</div>
     <h1>Not every decision<br><em>needs a sentence.</em></h1>
-    <p>A generative model writes its answer one token at a time, even when the answer is a
-    label, a level, or a probability. A typed decision model returns those directly. This arena
-    runs both against the same evidence and shows exactly what was fed in, what came back, and
-    which tokens stopped being produced.</p>
+    <p>Every lane below runs on Foundry. Foundry holds the evidence, the policy, the
+    orchestration, the tracing and the governance — that never changes. What changes is how the
+    decision itself is produced: generated token by token, or returned directly by a typed
+    decision model that Foundry calls. The arena runs both on the same evidence and shows what
+    was fed in, what came back, and which tokens stopped being produced.</p>
   </header>
 
   <div class="scenarios" role="tablist">
     <button class="scenario-tab" role="tab" data-scenario="triage" aria-selected="true">
       <div class="idx">USE CASE 01</div>
       <h3>Decide the route.</h3>
-      <p>Seven typed judgements on a critical-asset incident. Compares pure LLM, typed-only,
-      and typed + LLM escalation.</p>
+      <p>Seven judgements on a critical-asset incident. Compares Foundry with an LLM only,
+      Foundry with a typed model, and typed decisions escalating to the LLM.</p>
     </button>
     <button class="scenario-tab" role="tab" data-scenario="firewall" aria-selected="false">
       <div class="idx">USE CASE 02</div>
       <h3>Decide what the LLM sees.</h3>
-      <p>The typed model scores every context line and drops the irrelevant ones before the
-      prompt is built. The saving is input tokens.</p>
+      <p>Foundry calls a typed model to score every context line and drop the irrelevant ones
+      before the prompt is built. The saving is input tokens on the Foundry deployment.</p>
     </button>
   </div>
 
@@ -46,8 +47,8 @@
     <section class="block">
       <div class="block-head"><span class="block-num">01</span><span class="block-label">Evidence</span></div>
       <h2>The incident.</h2>
-      <p class="sub">This is the raw operational state. Nothing here is pre-labelled — both
-      lanes receive exactly the same object.</p>
+      <p class="sub">This is the raw operational state. Nothing here is pre-labelled — every
+      lane receives exactly the same object.</p>
       <div class="form-grid">
         <div class="field"><label>Asset ID</label><input id="asset_id"></div>
         <div class="field"><label>Asset type</label><input id="asset_type"></div>
@@ -64,7 +65,7 @@
         </div>
       </div>
       <button class="run" id="run-triage">Run all lanes <span class="kbd">↵</span></button>
-      <span class="run-note" id="triage-note">Foundry and Laya run in parallel.</span>
+      <span class="run-note" id="triage-note">All lanes run on Foundry, in parallel.</span>
     </section>
 
     <section class="block">
@@ -174,9 +175,10 @@
   </div>
 
   <footer>
-    Token counts are read from live provider usage where the provider reports it. Laya input
-    counts are local compute units on your own GPU, not billed API tokens, and are not directly
-    comparable to Foundry prompt tokens. Laya is an open-weight model with different weights and
+    Every lane runs on Microsoft Foundry; the lanes differ only in how the decision is produced.
+    Token counts are read from live provider usage where the provider reports it. Typed-model
+    input counts are compute units on the GPU serving that model, not billed API tokens, and are
+    not directly comparable to Foundry prompt tokens. Laya is an open-weight model with different weights and
     calibration to Jev; treat it as an architectural analogue, not an equivalent checkpoint.
   </footer>
 </div>

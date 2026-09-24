@@ -32,11 +32,11 @@ class ComparisonService:
         engines: list[tuple[str, str, DecisionEngine | None]] = [
             (
                 "foundry",
-                "Foundry generative JSON baseline",
+                "Foundry - LLM only",
                 foundry_engine_from_environment(),
             ),
-            ("jev", "Jev typed decisions", typed["jev"] if include_jev else None),
-            ("laya", "Laya open-weight typed decisions", typed["laya"]),
+            ("jev", "Foundry + Jev", typed["jev"] if include_jev else None),
+            ("laya", "Foundry + Laya", typed["laya"]),
         ]
         lanes = asyncio.gather(
             *(self._run(provider, label, engine, incident) for provider, label, engine in engines)
@@ -72,10 +72,10 @@ class ComparisonService:
         return [
             ProviderStatus(
                 provider="foundry",
-                label="Foundry LLM",
+                label="Foundry - LLM only",
                 available=foundry is not None,
                 detail=(
-                    "Generates the decision JSON token by token."
+                    "The model generates the decision JSON token by token."
                     if foundry
                     else "Set FOUNDRY_PROJECT_ENDPOINT and AZURE_AI_MODEL_DEPLOYMENT_NAME."
                 ),
@@ -83,21 +83,23 @@ class ComparisonService:
             ),
             ProviderStatus(
                 provider="laya",
-                label="Laya",
+                label="Foundry + Laya",
                 available=True,
                 detail=(
-                    "Open-weight typed decision model on a remote GPU service."
+                    "Foundry orchestrates; an open-weight typed model on a remote "
+                    "GPU service returns the decision directly."
                     if os.getenv("LAYA_ENDPOINT")
-                    else "Open-weight typed decision model running on local GPU."
+                    else "Foundry orchestrates; an open-weight typed model on the "
+                    "local GPU returns the decision directly."
                 ),
                 model=getattr(typed["laya"], "model", None),
             ),
             ProviderStatus(
                 provider="jev",
-                label="Jev",
+                label="Foundry + Jev",
                 available=jev_engine is not None,
                 detail=(
-                    "TypeSafe hosted typed decisions."
+                    "Foundry orchestrates; TypeSafe returns the typed decision."
                     if jev_engine
                     else "Waiting for a TypeSafe API key. Set TYPESAFE_API_KEY to enable this lane."
                 ),

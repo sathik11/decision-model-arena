@@ -133,7 +133,7 @@ function laneCard(run) {
   const route = run.result.route;
   return `<div class="lane">
     <div class="lane-kind">${run.provider === "foundry" ? "Generative baseline" : "Typed decisions"}</div>
-    <h4>${run.provider === "foundry" ? "Pure LLM" : run.provider === "jev" ? "Jev" : "Laya"}</h4>
+    <h4>${run.provider === "foundry" ? "Foundry &middot; LLM only" : run.provider === "jev" ? "Foundry + Jev" : "Foundry + Laya"}</h4>
     <div class="model">${run.result.model}</div>
     <div class="figure">${num(run.generated_tokens)}</div>
     <div class="figure-label">generated tokens</div>
@@ -172,7 +172,7 @@ function renderFlows(data) {
   const rows = [];
 
   if (foundry) {
-    rows.push(`<div class="flow"><div class="flow-name">Pure LLM</div>
+    rows.push(`<div class="flow"><div class="flow-name">Foundry &middot; LLM only</div>
       <span class="node">state + 7 questions</span>${arrow}
       <span class="node">prompt ${num(foundry.input_tokens)} tok</span>${arrow}
       <span class="node gen">generate JSON ${num(foundry.generated_tokens)} tok</span>${arrow}
@@ -180,7 +180,7 @@ function renderFlows(data) {
       <span class="node">policy → ${foundry.result.route}</span></div>`);
   }
   if (typed) {
-    rows.push(`<div class="flow"><div class="flow-name">Typed only</div>
+    rows.push(`<div class="flow"><div class="flow-name">Foundry + typed</div>
       <span class="node">state + 7 questions</span>${arrow}
       <span class="node">encode ${num(typed.input_tokens)} units</span>${arrow}
       <span class="node free">decision heads · 0 generated</span>${arrow}
@@ -188,7 +188,7 @@ function renderFlows(data) {
       <span class="node">policy → ${typed.result.route}</span></div>`);
   }
   if (hybrid) {
-    rows.push(`<div class="flow"><div class="flow-name">Typed + LLM</div>
+    rows.push(`<div class="flow"><div class="flow-name">Foundry + typed + LLM</div>
       <span class="node">state + 7 questions</span>${arrow}
       <span class="node free">decision heads · 0 generated</span>${arrow}
       <span class="node">gate</span>${arrow}
@@ -301,7 +301,7 @@ function renderDetail(data) {
     .map((run) => {
       const other = run === reference ? null : reference.result.decisions;
       return `<div class="detail-col">
-        <h4>${run.provider === "foundry" ? "Pure LLM" : run.provider === "jev" ? "Jev" : "Laya"}</h4>
+        <h4>${run.provider === "foundry" ? "Foundry &middot; LLM only" : run.provider === "jev" ? "Foundry + Jev" : "Foundry + Laya"}</h4>
         <div class="model">${run.result.model} · route ${run.result.route}</div>
         ${Object.entries(run.result.decisions)
           .map(([id, decision]) => decisionBlock(id, decision, other?.[id]))
@@ -438,7 +438,7 @@ function renderFirewall(data) {
       }
       const isGated = run.lane === "typed_plus_llm";
       return `<div class="answer">
-        <div class="lane-kind">${isGated ? "Typed firewall + LLM" : "Pure LLM"}</div>
+        <div class="lane-kind">${isGated ? "Foundry + typed firewall" : "Foundry &middot; LLM only"}</div>
         <div class="figure">${num(run.input_tokens)}</div>
         <div class="figure-label">input tokens</div>
         <p class="body">${run.answer}</p>
