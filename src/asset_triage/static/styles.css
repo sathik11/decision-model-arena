@@ -426,3 +426,15 @@ footer { padding: 46px 0; color: var(--dim); font-size: 0.8rem; max-width: 80ch;
   .fw-item { grid-template-columns: 24px minmax(0, 1fr) 70px; }
   .fw-item .p { display: none; }
 }
+
+.backlink {
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+  transition: color .15s ease, border-color .15s ease;
+}
+
+.backlink:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}

@@ -117,4 +117,10 @@ async def firewall(request: FirewallRequest) -> FirewallResult:
 
 @app.get("/")
 async def index() -> FileResponse:
+    """Concept explainer. Sellers and SEs land here before the demo."""
+    return FileResponse(STATIC_DIR / "learn.html")
+
+
+@app.get("/arena")
+async def arena() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")

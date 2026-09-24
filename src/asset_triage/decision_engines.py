@@ -27,6 +27,7 @@ class JevDecisionEngine(DecisionEngine):
         self.api_key = api_key
         self.endpoint = endpoint
         self.model = model
+        self.timeout = float(os.getenv("JEV_HTTP_TIMEOUT", "60"))
 
     async def evaluate(self, incident: Incident) -> EngineResult:
         payload = {
@@ -34,10 +35,10 @@ class JevDecisionEngine(DecisionEngine):
             "model": self.model,
             "questions": QUESTIONS,
         }
-        async with httpx.AsyncClient(timeout=20) as client:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(
                 self.endpoint,
-                headers={"Authorization": self.api_key},
+                headers={"Authorization": f"Bearer {self.api_key}"},
                 json=payload,
             )
         if response.status_code >= 400:
@@ -355,7 +356,9 @@ class FallbackDecisionEngine(DecisionEngine):
 
 def engine_from_environment() -> DecisionEngine:
     mode = os.getenv("DECISION_ENGINE", "auto").lower()
-    jev_key = os.getenv("TYPESAFE_API_KEY")
+    # TYPESAFE_KEY is accepted as an alias: it is the name most people reach
+    # for first, and a silently disabled Jev lane is hard to diagnose.
+    jev_key = os.getenv("TYPESAFE_API_KEY") or os.getenv("TYPESAFE_KEY")
     jev = (
         JevDecisionEngine(
             api_key=jev_key,
@@ -398,7 +401,9 @@ def engine_from_environment() -> DecisionEngine:
 
 
 def comparison_engines_from_environment() -> dict[str, DecisionEngine | None]:
-    jev_key = os.getenv("TYPESAFE_API_KEY")
+    # TYPESAFE_KEY is accepted as an alias: it is the name most people reach
+    # for first, and a silently disabled Jev lane is hard to diagnose.
+    jev_key = os.getenv("TYPESAFE_API_KEY") or os.getenv("TYPESAFE_KEY")
     laya_endpoint = os.getenv("LAYA_ENDPOINT")
     return {
         "jev": JevDecisionEngine(

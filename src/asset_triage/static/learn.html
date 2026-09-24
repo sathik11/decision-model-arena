@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Decision Layer · Foundry + typed decision models</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="stylesheet" href="/static/learn.css">
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <div class="wordmark"><b>The Decision Layer</b><span>Built on Microsoft Foundry</span></div>
+    <a class="run launch-top" href="/arena">Launch the demo &nbsp;→</a>
+  </div>
+
+  <header class="hero">
+    <div class="eyebrow"><b>For sellers &amp; solution engineers</b> &nbsp;/&nbsp; what to say, and what not to</div>
+    <h1>LLMs generate.<br><em>Decision models decide.</em></h1>
+    <p>Most agent work is not writing — it is judging. Route this, gate that, rank these,
+    verify the other. A generative model answers those by writing tokens. A typed decision
+    model returns the judgement itself. This page explains the idea in five minutes so you can
+    take it to a customer, then hands you a live demo that proves it on real infrastructure.</p>
+    <div class="hero-cta">
+      <a class="run" href="/arena">Launch the demo &nbsp;→</a>
+      <span class="run-note">Runs live on Foundry, with a typed model on an Azure GPU.</span>
+    </div>
+  </header>
+
+  <!-- 01 -->
+  <section class="block">
+    <div class="block-head"><span class="block-num">01</span><span class="block-label">The idea</span></div>
+    <h2>Where each model sits.</h2>
+    <p class="sub">One turn of an agent loop, left to right. The decision model assesses, your
+    code owns the consequence, and the LLM writes only when writing is actually the job.</p>
+
+    <div class="loop">
+      <div class="loop-step">
+        <div class="ls-kind">INPUT</div><h4>Context</h4>
+        <p>User message, tool output, sensor state, retrieved documents.</p>
+      </div>
+      <div class="loop-arrow">→</div>
+      <div class="loop-step decide">
+        <div class="ls-kind">DECIDE</div><h4>Typed model assesses</h4>
+        <p>Several bounded questions answered in parallel against the same state.</p>
+      </div>
+      <div class="loop-arrow">→</div>
+      <div class="loop-step">
+        <div class="ls-kind">DETERMINISTIC</div><h4>Your code routes</h4>
+        <p>Thresholds and policy. Code owns the consequence, not the model.</p>
+      </div>
+      <div class="loop-arrow">→</div>
+      <div class="loop-branch">
+        <div class="loop-step generate">
+          <div class="ls-kind">A · GENERATE</div><h4>LLM writes</h4>
+          <p>Explanation, summary, customer-facing reply.</p>
+        </div>
+        <div class="loop-step escalate">
+          <div class="ls-kind">B · ESCALATE</div><h4>Human review</h4>
+          <p>Confidence low, or the stakes are high.</p>
+        </div>
+      </div>
+    </div>
+    <div class="loop-note">Then loop back to context for the next turn. An agent repeats this
+    cycle constantly — which is exactly why the cost of each judgement compounds.</div>
+  </section>
+
+  <!-- 02 -->
+  <section class="block">
+    <div class="block-head"><span class="block-num">02</span><span class="block-label">The primitives</span></div>
+    <h2>Three question types. That is the whole surface.</h2>
+    <p class="sub">You define the questions in advance. The model returns typed answers with
+    probabilities — never prose, never JSON you have to parse and hope about.</p>
+
+    <div class="prims">
+      <div class="prim">
+        <h4>Choice <span>PICK ONE KNOWN OPTION</span></h4>
+        <p class="prim-desc">Returns probabilities across your options, plus confidence.</p>
+        <div class="bars">
+          <div class="bar-row"><span>engineering</span><div class="bar"><i style="width:91%"></i></div><b>0.91</b></div>
+          <div class="bar-row"><span>billing</span><div class="bar"><i style="width:6%"></i></div><b>0.06</b></div>
+          <div class="bar-row"><span>sales</span><div class="bar"><i style="width:2%"></i></div><b>0.02</b></div>
+        </div>
+        <div class="prim-use">Used for: routing · tool selection</div>
+      </div>
+
+      <div class="prim">
+        <h4>Score <span>PLACE ON AN ORDERED SCALE</span></h4>
+        <p class="prim-desc">Low to high against a rubric you define. Returns a weighted score
+        and confidence.</p>
+        <div class="scorebox">
+          <div class="scale"><span>low</span><div class="track"><i style="left:61%"></i></div><span>high</span></div>
+          <div class="score-vals">
+            <div><div class="sv-label">SCORE</div><div class="sv-num">1.82</div></div>
+            <div><div class="sv-label">CONFIDENCE</div><div class="sv-num">0.88</div></div>
+          </div>
+        </div>
+        <div class="prim-use">Used for: risk · quality · severity</div>
+      </div>
+
+      <div class="prim">
+        <h4>Noul <span>EVALUATE A YES/NO CONDITION</span></h4>
+        <p class="prim-desc">Returns the probability of "yes" between 0 and 1.</p>
+        <div class="bars">
+          <div class="bar-row"><span>yes</span><div class="bar"><i style="width:96%"></i></div><b>0.96</b></div>
+          <div class="bar-row"><span>no</span><div class="bar"><i style="width:4%"></i></div><b>0.04</b></div>
+        </div>
+        <div class="prim-use">Used for: gating · verification · escalation</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section class="block">
+    <div class="block-head"><span class="block-num">03</span><span class="block-label">Where it earns its place</span></div>
+    <h2>Five jobs an agent repeats constantly.</h2>
+    <p class="sub">If you are looking for a first use case with a customer, look here. These are
+    the steps that run thousands of times a day and rarely need a sentence.</p>
+
+    <div class="jobs">
+      <div class="job"><h4>Route</h4><p>Which team, tool or sub-agent should handle this?</p></div>
+      <div class="job"><h4>Gate</h4><p>Does this meet policy criteria before we act?</p></div>
+      <div class="job"><h4>Rerank</h4><p>Which retrieved result is actually relevant?</p></div>
+      <div class="job"><h4>Verify</h4><p>Does this generated output meet the criterion?</p></div>
+      <div class="job"><h4>Judge</h4><p>Is this response supported by the evidence?</p></div>
+    </div>
+    <div class="callout">Thousands of small judgements, every minute. That is where typed
+    answers and code-owned thresholds beat re-prompting an LLM.</div>
+  </section>
+
+  <!-- 04 -->
+  <section class="block">
+    <div class="block-head"><span class="block-num">04</span><span class="block-label">Where Foundry sits</span></div>
+    <h2>This is not Foundry versus something else.</h2>
+    <p class="sub">Foundry is the platform in every pattern below. The decision model is a
+    component Foundry calls — it replaces a prompt, not the platform.</p>
+
+    <div class="split">
+      <div class="split-col">
+        <h4>Foundry owns</h4>
+        <ul>
+          <li>The agent, the orchestration and the tools</li>
+          <li>Evidence, retrieval and grounding</li>
+          <li>Generation wherever language is the deliverable</li>
+          <li>Tracing, evaluation and continuous monitoring</li>
+          <li>Identity, RBAC, network isolation and governance</li>
+          <li>The model deployment and its lifecycle</li>
+        </ul>
+      </div>
+      <div class="split-col">
+        <h4>The typed model owns</h4>
+        <ul>
+          <li>Bounded judgements with pre-declared options</li>
+          <li>Probabilities your code can threshold on</li>
+          <li>The high-frequency inner loop</li>
+          <li>Nothing customer-facing, and nothing unbounded</li>
+        </ul>
+        <div class="split-note">It never decides the consequence. Your policy code does.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 -->
+  <section class="block">
+    <div class="block-head"><span class="block-num">05</span><span class="block-label">Which one, when</span></div>
+    <h2>Say this. Not that.</h2>
+    <p class="sub">The fastest way to lose a technical audience is to overclaim. These are the
+    honest lines, and they are strong enough on their own.</p>
+
+    <div class="saynot">
+      <div class="say">
+        <h4>Defensible</h4>
+        <ul>
+          <li>"The answer is typed, so there is no JSON to parse and no parse failure mode."</li>
+          <li>"Options are declared in advance, so the model cannot invent a route."</li>
+          <li>"You get calibrated probabilities, so your code owns the threshold."</li>
+          <li>"On a GPU this returns in about a tenth of a second."</li>
+          <li>"It is a component inside Foundry, governed like any other."</li>
+        </ul>
+      </div>
+      <div class="nots">
+        <h4>Do not say</h4>
+        <ul>
+          <li>"It uses zero tokens." It reads input like any model, and providers may bill it.</li>
+          <li>"It replaces your LLM." It replaces a prompt in the loop, nothing more.</li>
+          <li>"It is always cheaper." On CPU it is slower than the LLM it is meant to beat.</li>
+          <li>"The probabilities are calibrated out of the box." Ordering is stable; absolute
+          values shift with wording. Validate on the customer's own data.</li>
+          <li>"Jev and Laya are the same." Same shapes, different weights and calibration.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 -->
+  <section class="block">
+    <div class="block-head"><span class="block-num">06</span><span class="block-label">Qualify it</span></div>
+    <h2>Is this a fit?</h2>
+    <div class="fit">
+      <div class="fit-col good">
+        <h4>Good fit</h4>
+        <ul>
+          <li>The same judgement runs thousands of times a day</li>
+          <li>The answer is a label, a level or a yes/no — not a sentence</li>
+          <li>Latency in the inner loop is a real constraint</li>
+          <li>The options are known and stable</li>
+          <li>Policy must be auditable and owned by code</li>
+        </ul>
+      </div>
+      <div class="fit-col bad">
+        <h4>Poor fit</h4>
+        <ul>
+          <li>The deliverable is language: summaries, replies, code</li>
+          <li>The option set changes constantly or is open-ended</li>
+          <li>Volume is low — a prompt is simpler and good enough</li>
+          <li>The task needs multi-step reasoning or tool use</li>
+          <li>No GPU available and latency matters</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="block cta-block">
+    <div class="block-head"><span class="block-num">07</span><span class="block-label">Prove it</span></div>
+    <h2>Now watch it run.</h2>
+    <p class="sub">The demo runs two use cases on live infrastructure: deciding an incident
+    route, and deciding what the LLM is even allowed to see. Every lane runs on Foundry, and
+    every number on screen is measured at request time, not typed into a slide.</p>
+    <div class="hero-cta">
+      <a class="run" href="/arena">Launch the demo &nbsp;→</a>
+      <span class="run-note">Two use cases · three lanes · live token and latency counts.</span>
+    </div>
+  </section>
+
+  <footer>
+    Typed decision models answer pre-declared questions instead of generating text. Jev is
+    TypeSafe AI's hosted model; Laya is an open-weight model with the same question shapes but
+    different weights and calibration — an architectural analogue, not an equivalent checkpoint.
+    Token and latency figures in the demo are read from live provider usage at request time.
+  </footer>
+</div>
+</body>
+</html>
