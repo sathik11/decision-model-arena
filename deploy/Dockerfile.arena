@@ -1,0 +1,33 @@
+# Arena web app: the UI, the Foundry lane, and the hybrid lane.
+#
+# Deliberately excludes torch and laya. When LAYA_ENDPOINT is set the typed
+# decisions are served over HTTP by the GPU container, so shipping a 7 GB CUDA
+# image here would buy nothing. All torch/laya imports in the package are lazy,
+# which is what makes this split safe.
+#
+# Auth to Foundry uses DefaultAzureCredential, which resolves to the container
+# app's managed identity at runtime. No keys are baked in or passed as env vars.
+
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+COPY pyproject.toml ./
+COPY src ./src
+
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir ".[foundry]"
+
+RUN useradd --create-home --uid 10001 appuser && chown -R appuser /app
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD python -c "import urllib.request,sys; \
+        sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else 1)"
+
+CMD ["uvicorn", "asset_triage.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

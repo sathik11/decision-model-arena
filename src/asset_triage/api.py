@@ -11,6 +11,7 @@ from .comparison import POLICY_RULES, ComparisonService
 from .decision_engines import (
     DecisionEngineError,
     LayaDecisionEngine,
+    RemoteLayaDecisionEngine,
     comparison_engines_from_environment,
 )
 from .firewall import KEEP_QUESTION, ContextFirewall
@@ -42,6 +43,14 @@ async def lifespan(_: FastAPI):
             await asyncio.to_thread(engine.agent)
         except Exception as exc:  # pragma: no cover - optional dependency
             print(f"Laya preload skipped: {exc}")
+    elif isinstance(engine, RemoteLayaDecisionEngine):
+        # Scale-to-zero means the GPU container is cold until something asks.
+        # Do it at startup rather than leaving the first visitor to wait ~90 s.
+        try:
+            where = await engine.warm()
+            print(f"Remote Laya warm: {where}")
+        except Exception as exc:  # pragma: no cover - network dependent
+            print(f"Remote Laya warm failed: {exc}")
     yield
 
 

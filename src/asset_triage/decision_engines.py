@@ -176,9 +176,22 @@ class RemoteLayaDecisionEngine(DecisionEngine):
     def __init__(self, endpoint: str, model: str) -> None:
         self.endpoint = endpoint
         self.model = model
+        # A scale-to-zero GPU container takes 54-86 s to answer its first
+        # request: image pull, CUDA init, then model load. A 30 s timeout turns
+        # a normal cold start into a failed lane.
+        self.timeout = float(os.getenv("LAYA_HTTP_TIMEOUT", "180"))
+
+    async def warm(self) -> str:
+        """Ask the remote service to spin up before a user is waiting on it."""
+        base = self.endpoint.rsplit("/v1/", 1)[0]
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.get(f"{base}/ready")
+            response.raise_for_status()
+            body = response.json()
+        return f"{body.get('device')} {body.get('gpu') or ''}".strip()
 
     async def evaluate(self, incident: Incident) -> EngineResult:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(
                 self.endpoint,
                 json={

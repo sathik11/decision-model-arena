@@ -85,7 +85,11 @@ class ComparisonService:
                 provider="laya",
                 label="Laya",
                 available=True,
-                detail="Open-weight typed decision model running on local GPU.",
+                detail=(
+                    "Open-weight typed decision model on a remote GPU service."
+                    if os.getenv("LAYA_ENDPOINT")
+                    else "Open-weight typed decision model running on local GPU."
+                ),
                 model=getattr(typed["laya"], "model", None),
             ),
             ProviderStatus(
