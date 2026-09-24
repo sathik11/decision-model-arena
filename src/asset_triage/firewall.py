@@ -149,13 +149,13 @@ class ContextFirewall:
     async def _score_remote(engine: DecisionEngine, task: str, text: str) -> float:
         import httpx
 
-        async with httpx.AsyncClient(timeout=20) as client:
+        api_key = getattr(engine, "api_key", None)
+        timeout = getattr(engine, "timeout", 60.0)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(
                 engine.endpoint,
                 headers=(
-                    {"Authorization": engine.api_key}
-                    if getattr(engine, "api_key", None)
-                    else {}
+                    {"Authorization": f"Bearer {api_key}"} if api_key else {}
                 ),
                 json={
                     "state": {"task": task, "context_line": text},
