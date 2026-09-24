@@ -1,0 +1,8 @@
+# CUDA deployment. torch is pulled from the cu121 index in Dockerfile.gpu; the
+# CUDA libraries are the point here, not dead weight as they are on CPU.
+torch>=2.4
+laya>=0.3.5,<1
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2.9,<3
+huggingface_hub>=0.26

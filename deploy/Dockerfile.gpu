@@ -1,0 +1,68 @@
+# CUDA build of the Laya typed-decision service, for Azure Container Apps
+# serverless GPU (Consumption-GPU-NC8as-T4).
+#
+# Differences from deploy/Dockerfile, and why:
+#   1. torch comes from the cu121 index. A T4 is compute capability 7.5, which
+#      cu121 wheels support; there is no need to build for newer architectures.
+#   2. No thread capping. That mitigation exists for CPU matmul oversubscription
+#      and is irrelevant once the work runs on the GPU.
+#   3. The checkpoint is still baked in. Cold start matters more here, not less:
+#      scale-to-zero on a GPU profile means every scale-up pays model load.
+#
+# This image is large (~7 GB) because of the CUDA runtime libraries. Build it in
+# ACR with `az acr build` rather than pushing from a workstation.
+
+FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04 AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    HF_HOME=/opt/hf \
+    LAYA_DEVICE=cuda
+
+# gcc/g++ and the Python headers are required at *runtime*, not just build time.
+# Triton JIT-compiles CUDA kernels on the first inference, shelling out to gcc
+# against Python.h and libcuda. Without the toolchain the call fails with
+# "Failed to find C compiler"; without python3.10-dev it gets further and then
+# fails compiling driver.c. Neither surfaces at startup or in the health check,
+# which is why the warmup below exists.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3.10 python3.10-dev python3-pip gcc g++ \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3.10 /usr/bin/python
+
+# Triton caches compiled kernels here. It must be writable by the non-root user,
+# otherwise every cold start recompiles.
+ENV TRITON_CACHE_DIR=/opt/triton-cache
+
+WORKDIR /app
+
+COPY deploy/requirements-gpu.txt .
+
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir \
+        --extra-index-url https://download.pytorch.org/whl/cu121 \
+        -r requirements-gpu.txt
+
+ARG LAYA_MODEL=convaiinnovations/laya-typed-decisions
+ENV LAYA_MODEL=${LAYA_MODEL}
+RUN python -c "from huggingface_hub import snapshot_download; \
+    snapshot_download('${LAYA_MODEL}')" && \
+    find /opt/hf -name '*.h5' -delete 2>/dev/null || true
+
+COPY deploy/laya_service.py /app/laya_service.py
+
+RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /opt/triton-cache \
+    && chown -R appuser /app /opt/hf /opt/triton-cache
+USER appuser
+
+EXPOSE 8080
+
+# Start period is generous: image pull plus CUDA init plus model load. Marking
+# the container unhealthy mid-load would cause a restart loop that never ends.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=300s --retries=3 \
+    CMD python -c "import urllib.request,sys; \
+        sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health').status==200 else 1)"
+
+CMD ["uvicorn", "laya_service:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1"]

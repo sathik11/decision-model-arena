@@ -28,6 +28,10 @@ _state: dict[str, Any] = {
     "ready": False,
     "load_seconds": None,
     "threads": None,
+    "gpu": None,
+    "device_resolved": None,
+    "warmup_seconds": None,
+    "warmup_error": None,
 }
 
 
@@ -40,12 +44,59 @@ def _configure_threads() -> int:
     return torch.get_num_threads()
 
 
+def _resolve_device() -> str:
+    """Fail loudly rather than silently serving CPU speeds from a GPU SKU.
+
+    A GPU deployment that quietly falls back to CPU is the worst outcome: it
+    still answers, roughly 50x slower, and the cause is invisible.
+    """
+    import torch
+
+    if DEVICE.startswith("cuda") and not torch.cuda.is_available():
+        if os.getenv("LAYA_ALLOW_CPU_FALLBACK") == "1":
+            return "cpu"
+        raise RuntimeError(
+            "LAYA_DEVICE requested CUDA but torch.cuda.is_available() is False. "
+            "Set LAYA_ALLOW_CPU_FALLBACK=1 to downgrade to CPU deliberately."
+        )
+    return DEVICE
+
+
 def _load() -> None:
     import laya
+    import torch
 
     started = time.perf_counter()
-    _state["threads"] = _configure_threads()
-    _state["agent"] = laya.load(MODEL, subfolder=SUBFOLDER, device=DEVICE)
+    device = _resolve_device()
+    _state["device_resolved"] = device
+
+    if device == "cpu":
+        _state["threads"] = _configure_threads()
+    else:
+        _state["gpu"] = torch.cuda.get_device_name(0)
+
+    _state["agent"] = laya.load(MODEL, subfolder=SUBFOLDER, device=device)
+
+    # Warm up with a throwaway decision. On CUDA the first inference triggers
+    # Triton JIT compilation, which is both slow and the point at which a
+    # missing toolchain would otherwise blow up: without this, the container
+    # reports healthy and then fails the first real request.
+    warm_started = time.perf_counter()
+    try:
+        _state["agent"].predict(
+            {"task": "warmup"},
+            {
+                "ok": {
+                    "type": "choice",
+                    "instructions": "Is this a warmup call?",
+                    "criteria": {"yes": "Affirmative.", "no": "Negative."},
+                }
+            },
+        )
+        _state["warmup_seconds"] = round(time.perf_counter() - warm_started, 1)
+    except Exception as exc:  # noqa: BLE001 - surface, do not mask
+        _state["warmup_error"] = f"{type(exc).__name__}: {exc}"
+
     _state["load_seconds"] = round(time.perf_counter() - started, 1)
     _state["ready"] = True
 
@@ -105,9 +156,12 @@ def ready() -> dict[str, Any]:
     return {
         "ready": _state["ready"],
         "model": MODEL,
-        "device": DEVICE,
+        "device": _state["device_resolved"] or DEVICE,
+        "gpu": _state["gpu"],
         "torch_threads": _state["threads"],
         "load_seconds": _state["load_seconds"],
+        "warmup_seconds": _state["warmup_seconds"],
+        "warmup_error": _state["warmup_error"],
     }
 
 

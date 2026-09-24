@@ -66,6 +66,67 @@ For production or a Linux server without a suitable local GPU, deploy Laya separ
 set `LAYA_ENDPOINT` to a `POST /v1/systemone`-compatible endpoint accepting
 `{"state", "model", "questions"}` and returning `{"model", "answers", "usage"}`.
 
+## GPU deployment (Azure Container Apps serverless GPU)
+
+`deploy/Dockerfile.gpu` targets `Consumption-GPU-NC8as-T4`. Build it in ACR rather
+than pushing ~7 GB from a workstation:
+
+```bash
+az acr build -r <registry> -t laya-gpu:latest -f deploy/Dockerfile.gpu .
+az containerapp create -n laya-gpu -g <rg> --environment <env> \
+  --workload-profile-name <gpu-profile> --cpu 8 --memory 56Gi \
+  --target-port 8080 --ingress external --min-replicas 0 --max-replicas 1 \
+  --env-vars LAYA_DEVICE=cuda
+```
+
+Measured on a Tesla T4 in Azure Container Apps, Southeast Asia:
+
+| Workload | Tesla T4 (cloud) | RTX 4060 (local) | CPU container, 4 vCPU |
+|---|---|---|---|
+| 7-question triage | **100 ms** | 121 ms | 7,877 ms |
+| 16-line context gate | **449 ms** total (~28 ms/line) | — | ~430 ms *per line* |
+| Model load | 5–7 s | — | 28 s |
+| Cold start, scale-from-zero | 54–86 s | — | — |
+
+Decisions matched the local GPU exactly (route `maintenance`; gate range
+0.2986–0.6225, same ordering), so the hosted path is reproducible, not just fast.
+
+GPU restores the argument that CPU gives up: at ~100 ms against a 6.4–10.5 s
+`gpt-5.4` baseline, the typed model is roughly 60–100x faster on the same
+decision, with 0 generated tokens.
+
+### Three runtime traps specific to the CUDA image
+
+* **Triton needs a C toolchain at runtime.** PyTorch JIT-compiles CUDA kernels on
+  the *first inference*, shelling out to `gcc` against `Python.h`. The
+  `nvidia/cuda:*-runtime` base has neither, so the container starts, reports
+  healthy, passes its health check, and then fails the first real request with
+  `Failed to find C compiler`. Both `gcc g++` and `python3.10-dev` are required.
+* **Warm up at startup.** `_load()` runs a throwaway decision so this class of
+  failure surfaces during load instead of on a user's first call, and so the
+  Triton compile is paid once. `/ready` reports `warmup_seconds` and
+  `warmup_error`.
+* **Fail loudly if CUDA is missing.** `_resolve_device()` refuses to start when
+  `LAYA_DEVICE=cuda` but no GPU is visible. A silent CPU fallback on a GPU SKU is
+  the worst outcome: it still answers, ~50x slower, and nothing in the logs says
+  why. Set `LAYA_ALLOW_CPU_FALLBACK=1` to downgrade deliberately.
+
+### Serverless GPU quota is not VM quota
+
+`az vm list-usage` reports 0 for every NC/ND/NV family on subscriptions that can
+nonetheless run serverless GPU — those are unrelated pools, and the
+`Microsoft.App` usages API returns no GPU entries at all. Reading quota cannot
+answer the question. `deploy/check_gpu_quota.sh probe <region>` settles it by
+asking the control plane to add the profile:
+
+```bash
+./deploy/check_gpu_quota.sh probe southeastasia
+```
+
+Confirmed accepted in southeastasia, australiaeast, swedencentral and
+northcentralus. The same script checks a second tenant without disturbing an
+existing CLI session, by redirecting `AZURE_CONFIG_DIR`.
+
 ## CPU deployment
 
 Laya runs on CPU with no CUDA — it is plain fp32 PyTorch, 421M parameters, ~2.5 GB RSS.
